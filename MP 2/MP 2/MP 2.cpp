@@ -1,6 +1,3 @@
-//  
-// Example code for OpenGL programming
-//
 #include <stdio.h>
 #include <stdlib.h>
 #include <GL/glut.h>
@@ -9,253 +6,149 @@
 
 #include <math.h>
 
-//int nFPS = 30;
-//float fRotateAngle = 0.f;
-//clock_t startClock=0,curClock;
-//long long int prevF=0,curF=0;
-//int dipMode=1;
-
 float sealevel;
+float polysize;
 
-int res = 257;
-
-#define ADDR(i,j,k) (3*((j)*res + (i)) + (k))
-
-GLfloat *verts = 0;
-GLfloat *norms = 0;
-GLuint *faces = 0;
-
-float frand(float x, float y) {
+int seed(float x, float y) {
     static int a = 1588635695, b = 1117695901;
-    int xi = *(int *)&x;
+	int xi = *(int *)&x;
 	int yi = *(int *)&y;
-    srand(((xi * a) % b) - ((yi * b) % a));
-	return 2.0*((float)rand()/(float)RAND_MAX) - 1.0;
+    return ((xi * a) % b) - ((yi * b) % a);
 }
 
-void mountain(int i, int j, int s)
+void mountain(float x0, float y0, float z0, float x1, float y1, float z1, float x2, float y2, float z2, float s)
 {
-	if (s > 1) {
+	float x01,y01,z01,x12,y12,z12,x20,y20,z20;
 
-		float x0,y0,z0,x1,y1,z1,x2,y2,z2,x3,y3,z3,x01,y01,z01,x02,y02,z02,x13,y13,z13,x23,y23,z23,x0123,y0123,z0123;
+	if (s < polysize) {
+		x01 = x1 - x0;
+		y01 = y1 - y0;
+		z01 = z1 - z0;
 
-		x0 = verts[ADDR(i,j,0)];
-		y0 = verts[ADDR(i,j,1)];
-		z0 = verts[ADDR(i,j,2)];
+		x12 = x2 - x1;
+		y12 = y2 - y1;
+		z12 = z2 - z1;
 
-		x1 = verts[ADDR(i+s,j,0)];
-		y1 = verts[ADDR(i+s,j,1)];
-		z1 = verts[ADDR(i+s,j,2)];
+		x20 = x0 - x2;
+		y20 = y0 - y2;
+		z20 = z0 - z2;
 
-		x2 = verts[ADDR(i,j+s,0)];
-		y2 = verts[ADDR(i,j+s,1)];
-		z2 = verts[ADDR(i,j+s,2)];
+		float nx = y01*(-z20) - (-y20)*z01;
+		float ny = z01*(-x20) - (-z20)*x01;
+		float nz = x01*(-y20) - (-x20)*y01;
 
-		x3 = verts[ADDR(i+s,j+s,0)];
-		y3 = verts[ADDR(i+s,j+s,1)];
-		z3 = verts[ADDR(i+s,j+s,2)];
+		float den = sqrt(nx*nx + ny*ny + nz*nz);
 
-		x01 = 0.5*(x0 + x1);
-		y01 = 0.5*(y0 + y1);
-		z01 = 0.5*(z0 + z1);
-
-		x02 = 0.5*(x0 + x2);
-		y02 = 0.5*(y0 + y2);
-		z02 = 0.5*(z0 + z2);
-
-		x13 = 0.5*(x1 + x3);
-		y13 = 0.5*(y1 + y3);
-		z13 = 0.5*(z1 + z3);
-
-		x23 = 0.5*(x2 + x3);
-		y23 = 0.5*(y2 + y3);
-		z23 = 0.5*(z2 + z3);
-
-		x0123 = 0.25*(x0 + x1 + x2 + x3);
-		y0123 = 0.25*(y0 + y1 + y2 + y3);
-		z0123 = 0.25*(z0 + z1 + z2 + z3);
-
-		z01 += 0.5*((float)s/res)*frand(x01,y01);
-		z02 += 0.5*((float)s/res)*frand(x02,y02);
-		z13 += 0.5*((float)s/res)*frand(x13,y13);
-		z23 += 0.5*((float)s/res)*frand(x23,y23);
-		z0123 += 0.5*((float)s/res)*frand(x0123,y0123);
-
-		verts[ADDR(i+s/2,j,0)] = x01;
-		verts[ADDR(i+s/2,j,1)] = y01;
-		verts[ADDR(i+s/2,j,2)] = z01;
-
-		verts[ADDR(i,j+s/2,0)] = x02;
-		verts[ADDR(i,j+s/2,1)] = y02;
-		verts[ADDR(i,j+s/2,2)] = z02;
-
-		verts[ADDR(i+s,j+s/2,0)] = x13;
-		verts[ADDR(i+s,j+s/2,1)] = y13;
-		verts[ADDR(i+s,j+s/2,2)] = z13;
-
-		verts[ADDR(i+s/2,j+s,0)] = x23;
-		verts[ADDR(i+s/2,j+s,1)] = y23;
-		verts[ADDR(i+s/2,j+s,2)] = z23;
-
-		verts[ADDR(i+s/2,j+s/2,0)] = x0123;
-		verts[ADDR(i+s/2,j+s/2,1)] = y0123;
-		verts[ADDR(i+s/2,j+s/2,2)] = z0123;
-
-		mountain(i,j,s/2);
-		mountain(i+s/2,j,s/2);
-		mountain(i,j+s/2,s/2);
-		mountain(i+s/2,j+s/2,s/2);
-
-	} else {
-
-		float dx,dy,dz;
-
-		if (i == 0) {
-			dx = verts[ADDR(i+1,j,2)] - verts[ADDR(i,j,2)];
-		} else if (i == res-1) {
-			dx = verts[ADDR(i,j,2)] - verts[ADDR(i-1,j,2)];
-		} else {
-			dx = (verts[ADDR(i+1,j,2)] - verts[ADDR(i-1,j,2)])/2.0;
+		if (den > 0.0) {
+			nx /= den;
+			ny /= den;
+			nz /= den;
 		}
 
-		if (j == 0) {
-			dy = verts[ADDR(i,j+1,2)] - verts[ADDR(i,j,2)];
-		} else if (j == res-1) {
-			dy = verts[ADDR(i,j,2)] - verts[ADDR(i,j-1,2)];
-		} else {
-			dy = (verts[ADDR(i,j+1,2)] - verts[ADDR(i,j-1,2)])/2.0;
-		}
+		glNormal3f(nx,ny,nz);
+		glBegin(GL_TRIANGLES);
+			glVertex3f(x0,y0,z0);
+			glVertex3f(x1,y1,z1);
+			glVertex3f(x2,y2,z2);
+		glEnd();
 
-		dx *= res;
-		dy *= res;
-		dz = 1.0/sqrt(dx*dx + dy*dy + 1.0);
-		dx *= dz;
-		dy *= dz;
-
-		norms[ADDR(i,j,0)] = dx;
-		norms[ADDR(i,j,1)] = dy;
-		norms[ADDR(i,j,2)] = dz;
-	}
-}
-
-void makemountain()
-{
-	int i,j;
-
-	if (verts) free(verts);
-	if (norms) free(norms);
-	if (faces) free(faces);
-
-	verts = (GLfloat *)malloc(res*res*3*sizeof(GLfloat));
-	norms = (GLfloat *)malloc(res*res*3*sizeof(GLfloat));
-	faces = (GLuint *)malloc((res-1)*(res-1)*6*sizeof(GLuint));
-
-	verts[ADDR(0,0,0)] = -5.0;
-	verts[ADDR(0,0,1)] = -5.0;
-	verts[ADDR(0,0,2)] = 0.0;
-
-	verts[ADDR(res-1,0,0)] = 5.0;
-	verts[ADDR(res-1,0,1)] = -5.0;
-	verts[ADDR(res-1,0,2)] = 0.0;
-
-	verts[ADDR(0,res-1,0)] = -5.0;
-	verts[ADDR(0,res-1,1)] = 5.0;
-	verts[ADDR(0,res-1,2)] = 0.0;
-
-	verts[ADDR(res-1,res-1,0)] = 5.0;
-	verts[ADDR(res-1,res-1,1)] = 5.0;
-	verts[ADDR(res-1,res-1,2)] = 0.0;
-
-	mountain(0,0,res-1);
-
-	GLuint *f = faces;
-	for (j = 0; j < res-1; j++) {
-		for (i = 0; i < res-1; i++) {
-			*f++ = j*res + i;
-			*f++ = j*res + i + 1;
-			*f++ = (j+1)*res + i + 1;
-			*f++ = j*res + i;
-			*f++ = (j+1)*res + i + 1;
-			*f++ = (j+1)*res + i;
-		}
+		return;
 	}
 
+	x01 = 0.5*(x0 + x1);
+	y01 = 0.5*(y0 + y1);
+	z01 = 0.5*(z0 + z1);
+
+	x12 = 0.5*(x1 + x2);
+	y12 = 0.5*(y1 + y2);
+	z12 = 0.5*(z1 + z2);
+
+	x20 = 0.5*(x2 + x0);
+	y20 = 0.5*(y2 + y0);
+	z20 = 0.5*(z2 + z0);
+
+	s *= 0.5;
+
+	srand(seed(x01,y01));
+	z01 += 0.3*s*(2.0*((float)rand()/(float)RAND_MAX) - 1.0);
+	srand(seed(x12,y12));
+	z12 += 0.3*s*(2.0*((float)rand()/(float)RAND_MAX) - 1.0);
+	srand(seed(x20,y20));
+	z20 += 0.3*s*(2.0*((float)rand()/(float)RAND_MAX) - 1.0);
+
+	mountain(x0,y0,z0,x01,y01,z01,x20,y20,z20,s);
+	mountain(x1,y1,z1,x12,y12,z12,x01,y01,z01,s);
+	mountain(x2,y2,z2,x20,y20,z20,x12,y12,z12,s);
+	mountain(x01,y01,z01,x12,y12,z12,x20,y20,z20,s);
 }
 
 void init(void) 
 {
-	GLfloat amb[] = {0.2,0.2,0.2};
-	GLfloat diff[] = {1.0,1.0,1.0};
-	GLfloat spec[] = {1.0,1.0,1.0};
+	GLfloat white[] = {1.0,1.0,1.0,1.0};
+	GLfloat lpos[] = {0.0,1.0,0.0,0.0};
 
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
 
-	glLightfv(GL_LIGHT0, GL_AMBIENT, amb);
-	glLightfv(GL_LIGHT0, GL_DIFFUSE, diff);
-	glLightfv(GL_LIGHT0, GL_SPECULAR, spec);
+	glLightfv(GL_LIGHT0, GL_POSITION, lpos);
+	glLightfv(GL_LIGHT0, GL_AMBIENT, white);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, white);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, white);
 
-	glClearColor (0.5, 0.5, 1.0, 0.0);	// sky
+	glClearColor (0.5, 0.5, 1.0, 0.0);
+	/* glShadeModel (GL_FLAT); */
 	glEnable(GL_DEPTH_TEST);
 
 	sealevel = 0.0;
-
-	makemountain();
+	polysize = 0.01;
 }
+
+float eye[] = {0.5, 0.25, 0.0};
+float center[] = {0.0, 0.0, 0.0};
+float upV[] = {0.0, 0.0, 1.0};
+
+static GLfloat angle = 0.0;
+float fx = 0.0;
+float fy = 0.0;
+float fz = 0.0;
 
 void display(void)
 {
 	GLfloat tanamb[] = {0.2,0.15,0.1,1.0};
 	GLfloat tandiff[] = {0.4,0.3,0.2,1.0};
-	GLfloat tanspec[] = {0.0,0.0,0.0,1.0};	// dirt doesn't glisten
 
 	GLfloat seaamb[] = {0.0,0.0,0.2,1.0};
 	GLfloat seadiff[] = {0.0,0.0,0.8,1.0};
-	GLfloat seaspec[] = {0.5,0.5,1.0,1.0};	// Single polygon, will only have highlight if light hits a vertex just right
-
-	GLfloat lpos[] = {0.0,0.0,10.0,0.0};	// sun, high noon
-
-
+	GLfloat seaspec[] = {0.5,0.5,1.0,1.0};
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glColor3f (1.0, 1.0, 1.0);
 	glLoadIdentity ();             /* clear the matrix */
-	/* viewing transformation, look at the origin  */
+			/* viewing transformation  */
 	gluLookAt (0.5, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
-	static GLfloat angle = 0.0;
-	glRotatef(angle, 0.0, 0.0, 1.0);
-	angle += 0.01;
+	glRotatef(angle, fx, fy, fz);
+	glTranslatef (-0.5, -0.5, 0.0);      /* modeling transformation */ 
 
-	// send the light position down as if it was a vertex in world coordinates
-	glLightfv(GL_LIGHT0, GL_POSITION, lpos);
+	//	glutSolidTeapot(1.0);
 
-	// load terrain material
 	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, tanamb);
 	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, tandiff);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, tanspec);
-	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 50.0);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, tandiff);
+	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 10.0);
 
-	// Send terrain mesh through pipeline
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glEnableClientState(GL_NORMAL_ARRAY);
-	glVertexPointer(3,GL_FLOAT,0,verts);
-	glNormalPointer(GL_FLOAT,0,norms);
-	glDrawElements(GL_TRIANGLES, 6*(res-1)*(res-1), GL_UNSIGNED_INT, faces);
-	glDisableClientState(GL_VERTEX_ARRAY);
-	glDisableClientState(GL_NORMAL_ARRAY);
+	mountain(0.0,0.0,0.0, 1.0,0.0,0.0, 0.0,1.0,0.0, 1.0);
+	mountain(1.0,1.0,0.0, 0.0,1.0,0.0, 1.0,0.0,0.0, 1.0);
 
-	// load water material
 	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, seaamb);
 	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, seadiff);
 	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, seaspec);
 	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 10.0);
 
-	// Send water as a single quad
 	glNormal3f(0.0,0.0,1.0);
 	glBegin(GL_QUADS);
-		glVertex3f(-5,-5,sealevel);
-		glVertex3f(5,-5,sealevel);
-		glVertex3f(5,5,sealevel);
-		glVertex3f(-5,5,sealevel);
+		glVertex3f(0.0,0.0,sealevel);
+		glVertex3f(1.0,0.0,sealevel);
+		glVertex3f(1.0,1.0,sealevel);
+		glVertex3f(0.0,1.0,sealevel);
 	glEnd();
 
 	glutSwapBuffers();
@@ -268,8 +161,8 @@ void reshape (int w, int h)
 {
 	glViewport (0, 0, (GLsizei) w, (GLsizei) h); 
 	glMatrixMode (GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(90.0,(float)w/h,0.01,10.0);
+	glLoadIdentity ();
+	gluPerspective(90.0,1.0,0.01,10.0);
 	glMatrixMode (GL_MODELVIEW);
 }
 
@@ -284,123 +177,48 @@ void keyboard(unsigned char key, int x, int y)
 			sealevel += 0.01;
 			break;
 		case 'f':
-			res = (res-1)*2 + 1;
-			makemountain();
+			polysize *= 0.5;
 			break;
 		case 'c':
-			res = (res-1)/2 + 1;
-			makemountain();
+			polysize *= 2.0;
 			break;
 		case 27:
 			exit(0);
 			break;
    }
 }
-/*
-void init(void)
-{
-	// init your data, setup OpenGL environment here
-	glClearColor(0.9,0.9,0.9,1.0); // clear color is gray		
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // uncomment this function if you only want to draw wireframe model
-					// GL_POINT / GL_LINE / GL_FILL (default)
-	glPointSize(4.0);
+
+void rotate(float x, float y, float z) {
+	fx = x;
+	fy = y;
+	fz = z;
 }
 
-void display(void)
-{
-	if(dipMode==1)
-	{
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	}else{
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	}
-	
-
-	curF++;
-	// put your OpenGL display commands here
-	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-
-	// reset OpenGL transformation matrix
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity(); // reset transformation matrix to identity
-
-	// setup look at transformation so that 
-	// eye is at : (0,0,3)
-	// look at center is at : (0,0,0)
-	// up direction is +y axis
-	gluLookAt(0.f,0.f,3.f,0.f,0.f,0.f,0.f,1.f,0.f);
-	glRotatef(fRotateAngle,0.f,1.f,0.f);
-
-	// Test drawing a solid teapot
-	glColor3f(1.0,0.0,0.0); // set current color to Red
-	//glutSolidTeapot(1.f); // call glut utility to draw a solid teapot 
-  glBegin(GL_TRIANGLE_STRIP );
-
-    glVertex2f(  (-0.6 ),  (0.6 ));
-
-    glVertex2f( (-0.6 ),  (1 ));
-
-    glVertex2f( (0.6 ),  (0.6 ));
-
-    glVertex2f( (0.6 ),  (1 ));
-
-    glEnd();
-	
-	//glFlush();
-	glutSwapBuffers();	// swap front/back framebuffer to avoid flickering 
-
-	curClock=clock();
-	float elapsed=(curClock-startClock)/(float)CLOCKS_PER_SEC;
-	if(elapsed>1.0f){
-		float fps=(float)(curF-prevF)/elapsed;
-		printf("fps:%f\n",fps);
-		prevF=curF;
-		startClock=curClock;
+void special(int key, int x, int y) {
+	// put your movement key here
+	switch (key) {
+		case GLUT_KEY_LEFT:
+			printf("left is pressed\n");
+			angle -= 1.0;
+			rotate(1.0, 0.0, 0.0); // LEFT hit, roll left
+			break;
+		case GLUT_KEY_RIGHT:
+			printf("right is pressed\n");
+			angle += 1.0;
+			rotate(1.0, 0.0, 0.0); // RIGHT hit, roll right
+			break;
+		case GLUT_KEY_UP:
+			printf("up is pressed\n");
+			angle -= 1.0;
+			rotate(0.0, 1.0, 0.0); // UP hit, pitch up
+			break;
+		case GLUT_KEY_DOWN:
+			printf("down is pressed\n");
+			angle += 1.0;
+			rotate(0.0, 1.0, 0.0); // DOWN hit, pitch down
+			break;
 	}
 }
- 
-void reshape (int w, int h)
-{
-	// reset viewport ( drawing screen ) size
-	glViewport(0, 0, w, h);
-	float fAspect = ((float)w)/h; 
-	// reset OpenGL projection matrix
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(70.f,fAspect,0.001f,30.f); 
-}
-
-
-
-void keyboard(unsigned char key, int x, int y)
-{
-	// put your keyboard control here
-	if (key == 27) 
-	{
-		// ESC hit, so quit
-		printf("demonstration finished.\n");
-		exit(0);
-	}
-	if( key == 'h'){
-		dipMode = 1-dipMode;
-	}
-}
-
-void mouse(int button, int state, int x, int y)
-{
-	// process your mouse control here
-	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
-		printf("push left mouse button.\n");
-}
-
-
-void timer(int v)
-{
-	fRotateAngle += 1.f; // change rotation angles
-	glutPostRedisplay(); // trigger display function by sending redraw into message queue
-	glutTimerFunc(1000/nFPS,timer,v); // restart timer again
-}
-*/
 
 int main(int argc, char* argv[])
 {
@@ -411,19 +229,12 @@ int main(int argc, char* argv[])
 	glutInitWindowPosition (100, 100);
 	//glutCreateWindow (argv[0]);
 	glutCreateWindow ((const char*)"Alexander Hadiwijaya: Flight Simulator");
-
 	init(); // setting up user data & OpenGL environment
-	
 	// set up the call-back functions 
 	glutDisplayFunc(display);  // called when drawing 
 	glutReshapeFunc(reshape);  // called when change window size
 	glutKeyboardFunc(keyboard); // called when received keyboard interaction
-	//glutMouseFunc(mouse);	    // called when received mouse interaction
-	//glutTimerFunc(100,timer,nFPS); // a periodic timer. Usually used for updating animation
-	
-	//startClock=clock();
-
+	glutSpecialFunc(special); // called when received special interaction
 	glutMainLoop(); // start the main message-callback loop
-
 	return 0;
 }
