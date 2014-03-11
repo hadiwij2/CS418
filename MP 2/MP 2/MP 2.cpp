@@ -205,16 +205,18 @@ void init(void)
 	makemountain();
 }
 
-float eye[] = {0.0, 0.0, 0.25};
-float center[] = {0.5, 0.5, 0.0};
+float eye[] = {0.5, 0.0, 0.25};
+float lookAt[] = {0.0, 0.5, 0.0};
 float upV[] = {0.0, 0.0, 1.0};
 
 float speed = 0.0005;
+float bRotate = 0.0;
+float sRotate = 0.0;
 
 void move() {
-	eye[0] += speed * center[0];
-	eye[1] += speed * center[1];
-	eye[2] += speed * center[2];
+	eye[0] += speed * lookAt[0];
+	eye[1] += speed * lookAt[1];
+	eye[2] += speed * lookAt[2];
 }
 
 void display(void)
@@ -234,11 +236,22 @@ void display(void)
 	glColor3f(1.0, 1.0, 1.0);
 	glLoadIdentity();             /* clear the matrix */
 	/* viewing transformation, look at the origin  */
-	gluLookAt (eye[0], eye[1], eye[2], center[0]+eye[0], center[1]+eye[1], center[2]+eye[2], upV[0], upV[1], upV[2]);
-	static GLfloat angle = 0.0;
+	gluLookAt (eye[0], eye[1], eye[2], lookAt[0]+eye[0], lookAt[1]+eye[1], lookAt[2]+eye[2], upV[0], upV[1], upV[2]);
+	//static GLfloat angle = 0.0;
 	//glRotatef(angle, 0.0, 0.0, 1.0);
-	angle += 0.1;
-	//move();
+	//angle += 0.1;
+	move();
+	glPushMatrix();
+		glTranslatef (0.0, 0.0, 10.0);
+		glutSolidSphere(1.0, 20, 18);   /* draw sun */
+		glRotatef (bRotate, 0.0, 1.0, 0.0);
+		glTranslatef (2.0, 0.0, 0.0);
+		glRotatef (sRotate, 0.0, 1.0, 0.0);
+		glutSolidSphere(0.2, 10, 8);    /* draw smaller planet */
+		sRotate += 0.1;
+		bRotate += 0.05;
+	glPopMatrix();
+
 	// send the light position down as if it was a vertex in world coordinates
 	glLightfv(GL_LIGHT0, GL_POSITION, lpos);
 
@@ -287,6 +300,85 @@ void reshape(int w, int h)
 	glMatrixMode(GL_MODELVIEW);
 }
 
+void pitch(float angle) {
+	float cross[] = { lookAt[1] * upV[2] - lookAt[2] * upV[1],
+		lookAt[2] * upV[0] - lookAt[0] * upV[2],
+		lookAt[0] * upV[1] - lookAt[1] * upV[0] };
+
+    float L = pow(cross[0], 2) + pow(cross[1], 2) + pow(cross[2], 2);
+
+	// update lookAt
+    lookAt[0] = ((cross[0] * ((cross[0] * lookAt[0]) + (cross[1] * lookAt[1]) + (cross[2] * lookAt[2]))) * (1 - cos(angle))+
+		(L * lookAt[0] * cos(angle)) +
+		(sqrt(L) * (-cross[2] * lookAt[1] + cross[1] * lookAt[2]) * sin(angle))) / L;
+    lookAt[1] = ((cross[1] * ((cross[0] * lookAt[0]) + (cross[1] * lookAt[1]) + (cross[2] * lookAt[2]))) * (1 - cos(angle)) +
+		(L * lookAt[1] * cos(angle)) +
+		(sqrt(L) * (cross[2] * lookAt[0] - cross[0] * lookAt[2]) * sin(angle))) / L;
+    lookAt[2] = ((cross[2] * ((cross[0] * lookAt[0]) + (cross[1] * lookAt[1]) + (cross[2] * lookAt[2]))) * (1 - cos(angle)) +
+		(L * lookAt[2] * cos(angle)) +
+		(sqrt(L) * (-cross[1] * lookAt[0] + cross[0] * lookAt[1]) * sin(angle))) / L; 
+
+	// Update the upVector after pitching
+	// cross product with new LookAt
+	cross[0] = lookAt[1] * upV[2] - lookAt[2] * upV[1];
+	cross[1] = lookAt[2] * upV[0] - lookAt[0] * upV[2];
+	cross[2] = lookAt[0] * upV[1] - lookAt[1] * upV[0];
+
+    L = pow(cross[0], 2) + pow(cross[1], 2) + pow(cross[2], 2);
+
+	// update upV
+    upV[0] = ((cross[0] * ((cross[0] * upV[0]) + (cross[1] * upV[1]) + (cross[2] * upV[2]))) * (1 - cos(angle))+
+		(L * upV[0] * cos(angle)) +
+		(sqrt(L) * (-cross[2] * upV[1] + cross[1] * upV[2]) * sin(angle))) / L;
+    upV[1] = ((cross[1] * ((cross[0] * upV[0]) + (cross[1] * upV[1]) + (cross[2] * upV[2]))) * (1 - cos(angle)) +
+		(L * upV[1] * cos(angle)) +
+		(sqrt(L) * (cross[2] * upV[0] - cross[0] * upV[2]) * sin(angle))) / L;
+    upV[2] = ((cross[2] * ((cross[0] * upV[0]) + (cross[1] * upV[1]) + (cross[2] * upV[2]))) * (1 - cos(angle)) +
+		(L * upV[2] * cos(angle)) +
+		(sqrt(L) * (-cross[1] * upV[0] + cross[0] * upV[1]) * sin(angle))) / L;
+}
+
+void roll(float angle) {
+	float L = pow(lookAt[0], 2) + pow(lookAt[1], 2) + pow(lookAt[2], 2);
+
+    upV[0] = ((lookAt[0] * ((lookAt[0] * upV[0]) + (lookAt[1] * upV[1]) + (lookAt[2] * upV[2]))) * (1 - cos(angle))+
+		(L * upV[0] * cos(angle)) +
+		(sqrt(L) * (-lookAt[2] * upV[1] + lookAt[1] * upV[2]) * sin(angle))) / L;
+    upV[1] = ((lookAt[1] * ((lookAt[0] * upV[0]) + (lookAt[1] * upV[1]) + (lookAt[2] * upV[2]))) * (1 - cos(angle)) +
+		(L * upV[1] * cos(angle)) +
+		(sqrt(L) * (lookAt[2] * upV[0] - lookAt[0] * upV[2]) * sin(angle))) / L;
+    upV[2] = ((lookAt[2] * ((lookAt[0] * upV[0]) + (lookAt[1] * upV[1]) + (lookAt[2] * upV[2]))) * (1 - cos(angle)) +
+		(L * upV[2] * cos(angle)) +
+		(sqrt(L) * (-lookAt[1] * upV[0] + lookAt[0] * upV[1]) * sin(angle))) / L;  
+}
+
+void yaw(float angle) {
+	roll(angle);
+	pitch(0.01);
+}
+
+void special(int key, int x, int y) {
+	// put your movement key here
+	switch (key) {
+		case GLUT_KEY_LEFT:
+			printf("left is pressed\n");
+			yaw(-0.01); // LEFT hit, yaw left
+			break;
+		case GLUT_KEY_RIGHT:
+			printf("right is pressed\n");
+			yaw(0.01); // RIGHT hit, yaw right
+			break;
+		case GLUT_KEY_UP:
+			printf("up is pressed\n");
+			pitch(0.01); // UP hit, pitch up
+			break;
+		case GLUT_KEY_DOWN:
+			printf("down is pressed\n");
+			pitch(-0.01); // DOWN hit, pitch down
+			break;
+	}
+}
+
 void keyboard(unsigned char key, int x, int y)
 {
 	switch (key) {
@@ -316,92 +408,14 @@ void keyboard(unsigned char key, int x, int y)
 		if (speed > 0.0005)
 			speed -= 0.0001;
 		break;
-	}
-}
-
-void roll_after_pitch(float angle) {
-	
-	float cross[] = { center[1] * upV[2] - center[2] * upV[1],
-		center[2] * upV[0] - center[0] * upV[2],
-		center[0] * upV[1] - center[1] * upV[0] };
-
-	float x = upV[0]; // This simplifies the below calcuation (visually at least)
-    float y = upV[1];
-    float z = upV[2];
-    float i = cross[0];
-    float j = cross[1];
-    float k = cross[2];
-    float L = pow(i, 2) + pow(j, 2) + pow(k, 2); // This is the square of the length of the vector
-    float sine = sin(angle); // Calculate sine and cosine each only once (more efficient)
-    float cosine = cos(angle);
-
-    // Use the formulas from the above web pages to calculate the parameters of the vector we will return
-    upV[0] = ((i*((i*x)+(j*y)+(k*z)))*(1-cosine) + (L*x*cosine) + (sqrt(L)*(-k*y+j*z)*sine))/L;
-    upV[1] = ((j*((i*x)+(j*y)+(k*z)))*(1-cosine) + (L*y*cosine) + (sqrt(L)*(k*x-i*z)*sine))/L;
-    upV[2] = ((k*((i*x)+(j*y)+(k*z)))*(1-cosine) + (L*z*cosine) + (sqrt(L)*(-j*x+i*y)*sine))/L;
-}
-
-void pitch(float angle) {
-
-	float cross[] = { center[1] * upV[2] - center[2] * upV[1],
-		center[2] * upV[0] - center[0] * upV[2],
-		center[0] * upV[1] - center[1] * upV[0] };
-
-	float x = center[0]; // This simplifies the below calcuation (visually at least)
-    float y = center[1];
-    float z = center[2];
-    float i = cross[0];
-    float j = cross[1];
-    float k = cross[2];
-    float L = pow(i, 2) + pow(j, 2) + pow(k, 2); // This is the square of the length of the vector
-    float sine = sin(angle); // Calculate sine and cosine each only once (more efficient)
-    float cosine = cos(angle);
-
-    // Use the formulas from the above web pages to calculate the parameters of the vector we will return
-    center[0] = ((i*((i*x)+(j*y)+(k*z)))*(1-cosine) + (L*x*cosine) + (sqrt(L)*(-k*y+j*z)*sine))/L;
-    center[1] = ((j*((i*x)+(j*y)+(k*z)))*(1-cosine) + (L*y*cosine) + (sqrt(L)*(k*x-i*z)*sine))/L;
-    center[2] = ((k*((i*x)+(j*y)+(k*z)))*(1-cosine) + (L*z*cosine) + (sqrt(L)*(-j*x+i*y)*sine))/L; 
-
-	roll_after_pitch(angle);
-}
-
-void roll(float angle) {
-
-	float x = upV[0]; // This simplifies the below calcuation (visually at least)
-    float y = upV[1];
-    float z = upV[2];
-    float i = center[0];
-    float j = center[1];
-    float k = center[2];
-    float L = pow(i, 2) + pow(j,2) + pow(k, 2); // This is the square of the length of the vector
-    float sine = sin(angle); // Calculate sine and cosine each only once (more efficient)
-    float cosine = cos(angle);
-
-    // Use the formulas from the above web pages to calculate the parameters of the vector we will return
-    upV[0] = ((i*((i*x)+(j*y)+(k*z)))*(1-cosine) + (L*x*cosine) + (sqrt(L)*(-k*y+j*z)*sine))/L;
-    upV[1] = ((j*((i*x)+(j*y)+(k*z)))*(1-cosine) + (L*y*cosine) + (sqrt(L)*(k*x-i*z)*sine))/L;
-    upV[2] = ((k*((i*x)+(j*y)+(k*z)))*(1-cosine) + (L*z*cosine) + (sqrt(L)*(-j*x+i*y)*sine))/L; 
-}
-
-void special(int key, int x, int y) {
-	// put your movement key here
-	switch (key) {
-		case GLUT_KEY_LEFT:
-			printf("left is pressed\n");
-			roll(-0.01); // LEFT hit, roll left
-			break;
-		case GLUT_KEY_RIGHT:
-			printf("right is pressed\n");
-			roll(0.01); // RIGHT hit, roll right
-			break;
-		case GLUT_KEY_UP:
-			printf("up is pressed\n");
-			pitch(0.01); // UP hit, pitch up
-			break;
-		case GLUT_KEY_DOWN:
-			printf("down is pressed\n");
-			pitch(-0.01); // DOWN hit, pitch down
-			break;
+	case 'q':
+		printf("q is pressed\n");
+		roll(-0.01); // Q hit, roll left
+		break;
+	case 'e':
+		printf("e is pressed\n");
+		roll(0.01); // E hit, roll rght
+		break;
 	}
 }
 
